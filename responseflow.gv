@@ -1,0 +1,97 @@
+/*
+Compile with:
+dot -Tpng responseflow.gv -o responseflow.png
+*/
+digraph {
+    Silenced[shape=note, label="Silenced\nFlag"]
+    subgraph commandParseStage {
+        style=filled;
+        color=lightgray;
+        label="Command Parse Stage";
+        node [style=""];
+
+        MessageIsBlank[shape=note, label="Blank\nMessage\nFlag"]
+
+        Start[shape=box, style=rounded]
+
+        CheckForBlank[shape=parallelogram, label="Check for\nblank message"]
+        Start -> CheckForBlank
+        CheckForBlank -> MessageIsBlank[style=dotted]
+
+        IsReplyToUs[shape=diamond, label="Is this a reply\nto our message?"]
+        CheckForBlank -> IsReplyToUs
+
+        IsAdmin[shape=diamond, label="Is Admin?"]
+        IsReplyToUs -> IsAdmin[label="No"]
+
+        AdminCommand[shape=diamond, label="Got an\nAdmin cmd?"]
+        IsAdmin -> AdminCommand[label="Yes"]
+
+        DoAdminCmd[shape=parallelogram, label="Do Admin\nCommand"]
+        AdminCommand -> DoAdminCmd[label="Yes"]
+
+        IsSilenced[shape=diamond, label="Is silenced?"]
+        Silenced -> IsSilenced[style=dotted]
+        IsAdmin -> IsSilenced[label="No"]
+        AdminCommand -> IsSilenced[label="No"]
+
+        HelpCmd[shape=diamond, label="User said\n'help'?"]
+        IsSilenced -> HelpCmd[label="No"]
+
+        ShowHelp[shape=parallelogram, label="Show help\ntext"]
+        HelpCmd -> ShowHelp[label="Yes"]
+
+        IsReply[shape=diamond, label="Is this\na reply?"]
+        HelpCmd -> IsReply[label="No"]
+
+        GetReply[shape=parallelogram, label="Get resolved\nreply message"]
+        IsReply -> GetReply[label="Yes"]
+
+        IsEmptyMessage[shape=diamond, label="Is the message\nblank?"]
+        IsReply -> IsEmptyMessage[label="No"]
+        GetReply -> IsEmptyMessage
+        MessageIsBlank -> IsEmptyMessage[style=dotted]
+
+        ShowBlankResponse[shape=parallelogram, label="Show blank\nmessage response"]
+        IsEmptyMessage -> ShowBlankResponse[label="Yes"]
+    }
+
+    subgraph UrlParseStage {
+        style=filled;
+        color = darkgray;
+        label = "URL/Video Parse Stage";
+        node [style=""];
+
+        IsUrl[shape=diamond, label="Does the message\nhave a URL?"]
+        IsEmptyMessage -> IsUrl[label="No"]
+        IsUrl -> ShowBlankResponse[label="No"]
+
+        IsYtUrl[shape=diamond, label="Is is a\nYouTube URL?"]
+        IsUrl -> IsYtUrl[label="Yes"]
+
+        NotYtUrl[shape=parallelogram, label="Show 'Not a\nYouTube URL'"]
+        IsYtUrl -> NotYtUrl[label="No"]
+
+        ShowViewedEmote[shape=parallelogram, label="Show 'viewed'\nreaction emote"]
+        IsYtUrl -> ShowViewedEmote[label="Yes"]
+
+        GetVideoInfo[shape=parallelogram, label="Get video info"]
+        ShowViewedEmote -> GetVideoInfo
+
+        ReportError[shape=parallelogram, label="Report the error"]
+        GetVideoInfo -> ReportError[label="Error"]
+    }
+
+    GenerateResponse[shape=parallelogram, label="Generate\nresponse"]
+    GetVideoInfo -> GenerateResponse
+
+    End[shape=box, style=rounded]
+    IsReplyToUs -> End[label="Yes"]
+    DoAdminCmd -> End
+    IsSilenced -> End[label="Yes"]
+    ShowHelp -> End
+    ShowBlankResponse -> End
+    NotYtUrl -> End
+    ReportError -> End
+    GenerateResponse -> End
+}

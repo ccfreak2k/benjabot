@@ -1,0 +1,5 @@
+*.png
+.idea/
+venv/
+TODO.md
+config.ini

@@ -1,0 +1,27 @@
+[Responses]
+# The chance factor to affect how often the "extra" table is used, i.e. a 1 in x chance to apply it.
+# Defaults to 4
+# Type: int
+# bonus_chance_factor = 4
+
+# The reaction to use when it looks at/processes a video. Put the actual Unicode emoji here or follow this:
+# https://discordpy.readthedocs.io/en/latest/faq.html?highlight=reaction#how-can-i-add-a-reaction-to-a-message
+# Set to None to disable reactions. Defaults to '👁'
+# Type: str
+# viewed_emote= 👁️
+
+# The response to send if someone @mentions the bot (and optionally others) with a message not containing a URL. Set to
+# None if you don't want it to respond in this case. Defaults to '👀'
+# Type: str
+# empty_response = 👀
+
+[Dev]
+# The server or "guild" ID to restrict bot responses to when in dev mode. Has no effect outside of dev mode. See
+# README.md for details.
+# Type: int
+# dev_server = 1234567890
+
+# The user ID to restrict bot responses to when in dev mode. Has not effect outside of dev mode. See README.md for
+# details.
+# Type: int
+# dev_user = 1234567890
