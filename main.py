@@ -67,7 +67,7 @@ class Benjabot(discord.Client):
             logger.warning('No dev user specified; ignore this if not using dev mode.')
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
-        self.bonus_chance_factor = cfg.getint('Responses', 'bonus_chance_factor', fallback=6)
+        self.bonus_chance_factor = cfg.getint('Responses', 'bonus_chance_factor', fallback=4)
         self.viewed_emote = cfg.get('Responses', 'viewed_emote', fallback='👁')
         self.empty_response = cfg.get('Responses', 'empty_response', fallback='👀')
         logging.debug('done initing')
