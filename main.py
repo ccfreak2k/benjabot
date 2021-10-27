@@ -30,10 +30,9 @@ class Logger(object):
 
 
 logger = Logger()
-ydl_opts = {"logger": Logger(), "ignoreerrors": True}
+ydl_opts = {"logger": Logger(), "ignoreerrors": False, "noplaylist": True}
 ydl = YoutubeDL(ydl_opts)
-# Regex for finding the youtube URL
-yts = re.compile(r'http[s]?://(\w+\.)?(youtube\.com|youtu\.be)/\S+')
+
 # Regex for finding any URL
 ure = re.compile(r'http[s]?://\S+')
 # Regex for finding @mentions in message content
@@ -46,12 +45,11 @@ fre = re.compile(r'[\W_]+')
 
 class Benjabot(discord.Client):
     # Whether the bot has been silenced.
-    # TODO: use an array to silence in different servers independently
-    silence: bool = False
+    silence: dict[int, bool] = {}
     # Whether the bot has had on_ready() called at least once.
     readied: bool = False
     # The version of the bot.
-    version: str = "1.0.0"
+    version: str = "1.0.1"
 
     def __init__(self, **options):
         logging.debug('Benjabot initing...')
@@ -79,17 +77,17 @@ class Benjabot(discord.Client):
             if self.dev_mode:
                 logger.debug(f"Dev mode enabled: {self.dev_mode}")
                 # Resolve the dev server and user IDs for printing to the log.
-                server: discord.Guild = next((x for x in self.guilds if x.id == self.dev_server), None)
-                if server:
-                    logger.debug(f"Dev server: {server.name}")
-                    # TODO: Resolve and print self.dev_user; this probably
-                    # requires "list members" intent/permission.
-        else:
+                dev_server = self.get_guild(self.dev_server)
+                if dev_server:
+                    logger.debug(f"Dev server: {dev_server.name}")
+                dev_user = self.get_user(self.dev_user)
+                if dev_user:
+                    logger.debug(f"Dev user: {dev_user.name}")
             self.readied = True
 
     async def on_message(self, msg: discord.Message):
+        # Ignore our own messages
         if msg.author.bot:
-            # Ignore our own messages
             return
         if self.user.mentioned_in(msg) and msg.mention_everyone is False:
             # Conditionally respond if dev mode is enabled.
@@ -108,33 +106,26 @@ class Benjabot(discord.Client):
                 if await self._mod_commands(msg):
                     return
 
-            if self.silence:
+            if self.silence[msg.guild.id]:
                 logger.debug('Ignoring message due to silence')
                 return
 
             if msg.content.endswith('help'):
-                await msg.channel.send("Look here's the deal, just gimme a YouTube URL by @mentioning me, and I'll "
-                                       "judge the song for you. You can also reply to a message with a YouTube link in "
-                                       "it and mention me in the reply.", reference=msg, mention_author=False)
+                await msg.channel.send("Look here's the deal, just gimme a video site URL by @mentioning me, and I'll "
+                                       "judge the song for you. You can also reply to a message with a video site link "
+                                       "in it and mention me in the reply.", reference=msg, mention_author=False)
                 return
 
+            # Attempt to find a URL in the message.
+            match = ure.search(msg.content)
             # Follow msg.referenced.resolved to get the message being replied to
             if isinstance(msg.reference, discord.MessageReference):
                 msg = msg.reference.resolved
 
-            elif is_empty_message or ure.search(msg.content) is None:
+            elif is_empty_message or match is None:
                 # Send the "empty message" response if the message doesn't have a URL.
                 if self.empty_response is not None:
                     await msg.channel.send(self.empty_response)
-                return
-
-            # Make sure the URL looks at least youtube-ish.
-            # TODO: Maybe drop this part and let youtube-dl decide how to handle it.
-            # This will allow non-YouTube sites to be used as well, e.g. Vimeo.
-            match = yts.search(msg.content)
-            if match is None:
-                logger.debug("didn't match URL")
-                await msg.channel.send("This doesn't look like a YouTube URL...", reference=msg, mention_author=False)
                 return
 
             if self.viewed_emote is not None:
@@ -150,12 +141,17 @@ class Benjabot(discord.Client):
                 except youtube_dl.utils.DownloadError as e:
                     emsg: str = re.search('ERROR: ([^\\n]+)', e.args[0]).group(1)
                     logger.warning("Got error: {0}".format(emsg))
-                    if re.search("Incomplete YouTube ID", e.args[0]) is not None:
+                    if re.search("Unsupported URL", e.args[0], re.IGNORECASE):
+                        await msg.channel.send("Sorry man, either this isn't a video or I don't recognize this site.", reference=msg, mention_author=False)
+                    elif re.search("Incomplete YouTube ID", e.args[0], re.IGNORECASE) is not None:
                         await msg.channel.send("I can't see this video...did you copy the whole URL?", reference=msg, mention_author=False)
                     else:
                         await msg.channel.send(f"I can't see this video...it says \"{emsg}\"", reference=msg, mention_author=False)
                     return
 
+                if info is None:
+                    await msg.channel.send("This doesn't look like a video...", reference=msg, mention_author=False)
+                    return
                 # Strip out anything in brackets, then strip all non-alphanumeric and lowercase it
                 title: str = fre.sub('', tre.sub('', info['title'].lower()))
                 logger.debug(f"generating response for: {title}")
@@ -207,16 +203,15 @@ class Benjabot(discord.Client):
             I can't help you! But what I _can_ do is respond to...
             **status** lets you know if I've been told to be quiet.
             **silence** tells me to shut up, or to speak up if I'm silenced.
-            Otherwise just gimme a YouTube URL.
+            Otherwise just gimme a video site URL.
             """
             await msg.channel.send(help_text, reference=msg)
             return True
 
         if 'status' in msg.content:
             # Return the status of the bot
-            logger.debug(f"Status - Silenced:{self.silence}")
             silenced: str = "not silenced."
-            if self.silence:
+            if self.silence[msg.guild.id]:
                 silenced = "silenced. (Except for right now)"
             await msg.channel.send(f"I am version {self.version}\n" +
                                    f"I am currently {silenced}")
@@ -224,23 +219,26 @@ class Benjabot(discord.Client):
 
         if 'silence' in msg.content:
             # Silence/unsilence the bot
-            self.silence = not self.silence
+            if msg.guild.id not in self.silence:
+                self.silence[msg.guild.id] = False
+            self.silence[msg.guild.id] = not self.silence[msg.guild.id]
+            logger.debug(f"Silenced: {msg.guild.id} -> {self.silence}")
             really_silence = ''
             if msg.content.endswith('!'):
                 really_silence = ' No need to yell!'
-            if self.silence:
-                logger.debug('Silenced')
+            if self.silence[msg.guild.id]:
                 await msg.channel.send("_Fine_, I'll be quiet." + really_silence)
             else:
-                logger.debug('Unsilenced')
                 await msg.channel.send("Alright I'll speak again." + really_silence)
             return True
+
         return False
 
 
 bot = Benjabot()
 
-if not os.getenv('TOKEN') or os.getenv('TOKEN') == '':
-    print('$TOKEN not found; did you add the TOKEN env var?', file=sys.stderr)
+# Make sure the TOKEN environment variable is set.
+if not os.environ.get('TOKEN') or os.environ.get('TOKEN') == '':
+    raise RuntimeError("TOKEN environment variable not set")
     exit(1)
 bot.run(os.getenv('TOKEN'))

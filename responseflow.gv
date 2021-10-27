@@ -66,14 +66,8 @@ digraph {
         IsEmptyMessage -> IsUrl[label="No"]
         IsUrl -> ShowBlankResponse[label="No"]
 
-        IsYtUrl[shape=diamond, label="Is is a\nYouTube URL?"]
-        IsUrl -> IsYtUrl[label="Yes"]
-
-        NotYtUrl[shape=parallelogram, label="Show 'Not a\nYouTube URL'"]
-        IsYtUrl -> NotYtUrl[label="No"]
-
         ShowViewedEmote[shape=parallelogram, label="Show 'viewed'\nreaction emote"]
-        IsYtUrl -> ShowViewedEmote[label="Yes"]
+        IsUrl -> ShowViewedEmote[label="Yes"]
 
         GetVideoInfo[shape=parallelogram, label="Get video info"]
         ShowViewedEmote -> GetVideoInfo
@@ -91,7 +85,6 @@ digraph {
     IsSilenced -> End[label="Yes"]
     ShowHelp -> End
     ShowBlankResponse -> End
-    NotYtUrl -> End
     ReportError -> End
     GenerateResponse -> End
 }
