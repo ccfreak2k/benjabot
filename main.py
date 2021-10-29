@@ -11,7 +11,6 @@ from youtube_dl import YoutubeDL
 
 import responses
 
-
 class Logger(object):
     """
     A basic logging object.
@@ -45,7 +44,7 @@ fre = re.compile(r'[\W_]+')
 
 class Benjabot(discord.Client):
     # Whether the bot has been silenced.
-    silence: dict[int, bool] = {}
+    silence = {}
     # Whether the bot has had on_ready() called at least once.
     readied: bool = False
     # The version of the bot.
@@ -106,7 +105,7 @@ class Benjabot(discord.Client):
                 if await self._mod_commands(msg):
                     return
 
-            if self.silence[msg.guild.id]:
+            if self.silence.get(msg.guild.id, False):
                 logger.debug('Ignoring message due to silence')
                 return
 
