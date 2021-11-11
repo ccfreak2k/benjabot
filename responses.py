@@ -29,6 +29,8 @@ charts = [
     'I hate the {0}.',
     'The {0} is pretty challenging.',
     'The {0} should be a {1}.',
+    'The {0} is actually harder than the {1}.',
+    'The {0} is actually easier than the {1}.'
 ]
 
 # Extra bonus song/chart description.
@@ -49,5 +51,11 @@ extra = [
     'The song got censored in later games.',
     'They actually _re-added_ it after removing it.',
     'It\'s one of Crispy\'s favorite songs.',
-    'This really should show up in a tournament some day.',
+    'This really should be in a tournament some day.',
 ]
+
+# Autoresponses to certain words or phrases.
+# Key should be the regex to match, value should be the response.
+autoresponses = {
+    r'gu*n.?r[o0]+[ckx]+': 'STOP PLAYING GUN ROCK!'
+}

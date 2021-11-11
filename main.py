@@ -117,11 +117,19 @@ class Benjabot(discord.Client):
 
             # Attempt to find a URL in the message.
             match = ure.search(msg.content)
+
             # Follow msg.referenced.resolved to get the message being replied to
             if isinstance(msg.reference, discord.MessageReference):
                 msg = msg.reference.resolved
 
-            elif is_empty_message or match is None:
+            if match is None:
+                # Look for any matching autoresponses to send
+                if not is_empty_message:
+                    for regex, response in responses.autoresponses.items():
+                        if re.search(regex, msg.content):
+                            logger.debug(f'Matched: ( {regex} ); sending {response}')
+                            await msg.channel.send(response, reference=msg)
+                            return
                 # Send the "empty message" response if the message doesn't have a URL.
                 if self.empty_response is not None:
                     await msg.channel.send(self.empty_response)
@@ -139,7 +147,7 @@ class Benjabot(discord.Client):
                     info = ydl.extract_info(match.group(0), download=False)
                 except youtube_dl.utils.DownloadError as e:
                     emsg: str = re.search('ERROR: ([^\\n]+)', e.args[0]).group(1)
-                    logger.warning("Got error: {0}".format(emsg))
+                    logger.warning(f"Got error: {emsg}")
                     if re.search("Unsupported URL", e.args[0], re.IGNORECASE):
                         await msg.channel.send("Sorry man, either this isn't a video or I don't recognize this site.", reference=msg, mention_author=False)
                     elif re.search("Incomplete YouTube ID", e.args[0], re.IGNORECASE) is not None:
