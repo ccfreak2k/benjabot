@@ -1,8 +1,8 @@
 [Responses]
 # The chance factor to affect how often the "extra" table is used, i.e. a 1 in x chance to apply it.
-# Defaults to 4
+# Defaults to 3
 # Type: int
-# bonus_chance_factor = 4
+# bonus_chance_factor = 3
 
 # The reaction to use when it looks at/processes a video. Put the actual Unicode emoji here or follow this:
 # https://discordpy.readthedocs.io/en/latest/faq.html?highlight=reaction#how-can-i-add-a-reaction-to-a-message

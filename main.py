@@ -64,7 +64,7 @@ class Benjabot(discord.Client):
             logger.warning('No dev user specified; ignore this if not using dev mode.')
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
-        self.bonus_chance_factor = cfg.getint('Responses', 'bonus_chance_factor', fallback=4)
+        self.bonus_chance_factor = cfg.getint('Responses', 'bonus_chance_factor', fallback=3)
         self.viewed_emote = cfg.get('Responses', 'viewed_emote', fallback='👁')
         self.empty_response = cfg.get('Responses', 'empty_response', fallback='👀')
         logging.debug('done initing')
@@ -166,14 +166,14 @@ class Benjabot(discord.Client):
                 seed(title)
                 # Generate two random charts
                 chart_prefix = choice(['S', 'D'])
-                charts = [f"{chart_prefix}{randint(12, 28)}" for x in range(2)]
+                charts = [f"{chart_prefix}{randint(12, 28)}" for x in range(3)]
                 # Add the song and chart descriptors.
                 response: str = choice(responses.descriptors) + " " + \
                                 choice(responses.charts).format(charts[0], charts[1])
                 if randrange(self.bonus_chance_factor - 1) == 0:
                     # Add the bonus sentence.
                     logger.debug("adding bonus response")
-                    response += " " + choice(responses.extra).format(charts[0])
+                    response += " " + choice(responses.extra).format(charts[2])
                 logger.debug(f"sending: \"{response}\"")
                 await msg.channel.send(response, reference=msg, mention_author=False)
 

@@ -27,6 +27,8 @@ charts = [
     'The {0} is alright.',
     'Love the {0}.',
     'I hate the {0}.',
+    'The {0} is fun.',
+    'The {0} is not fun.',
     'The {0} is pretty challenging.',
     'The {0} should be a {1}.',
     'The {0} is actually harder than the {1}.',
@@ -52,10 +54,21 @@ extra = [
     'They actually _re-added_ it after removing it.',
     'It\'s one of Crispy\'s favorite songs.',
     'This really should be in a tournament some day.',
+    'I actually saw Chris4Life play that one.',
+    'I _really_ wish they had the full song.',
+    'I love all of the charts, but I hate the song.',
+    'I hate all of the charts, but I love the song.',
+    'A lot of people seem to have trouble with this one.',
+    'For some reason, I have a _lot_ of trouble with this one.',
+    'I want to make a {0} chart for it.',
+    'They changed the background video for it.',
+    'The chart just...doesn\'t work.',
+    'This one is on Pump mobile!'
 ]
 
 # Autoresponses to certain words or phrases.
 # Key should be the regex to match, value should be the response.
 autoresponses = {
-    r'gu*n.?r[o0]+[ckx]+': 'STOP PLAYING GUN ROCK!'
+    r'gu*n.?r[o0]+[ckx]+': 'STOP PLAYING GUN ROCK!',
+    r'stage\s*br(eak|ake)': '_HEY!!_'
 }
