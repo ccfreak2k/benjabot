@@ -44,29 +44,36 @@ fre = re.compile(r'[\W_]+')
 
 class Benjabot(discord.Client):
     # Whether the bot has been silenced.
-    silence = {}
+    #silence = {}
     # Whether the bot has had on_ready() called at least once.
     readied: bool = False
     # The version of the bot.
     version: str = "1.0.1"
+    cfg = configparser.ConfigParser()
+    # The path to the config file.
+    cfg_path = 'config.ini'
+    # Default fallbacks for config values.
+    defaults = {
+        'silence': False,
+        'bonus_chance_factor': 3,
+        'viewed_emote':  '👁️',
+        'empty_response': '👀'
+    }
 
     def __init__(self, **options):
         logging.debug('Benjabot initing...')
         # Set up the defaults
         super().__init__(**options)
-        cfg = configparser.ConfigParser()
-        cfg.read('config.ini')
-        self.dev_server = cfg.getint('Dev', 'dev_server', fallback=None)
+        self.cfg.read(self.cfg_path)
+        # TODO: Handle missing config file case.
+        self.dev_server = self.cfg.getint('Dev', 'dev_server', fallback=None)
         if not self.dev_server:
             logger.warning('No dev server specified; ignore this if not using dev mode.')
-        self.dev_user = cfg.getint('Dev', 'dev_user', fallback=None)
+        self.dev_user = self.cfg.getint('Dev', 'dev_user', fallback=None)
         if not self.dev_user:
             logger.warning('No dev user specified; ignore this if not using dev mode.')
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
-        self.bonus_chance_factor = cfg.getint('Responses', 'bonus_chance_factor', fallback=3)
-        self.viewed_emote = cfg.get('Responses', 'viewed_emote', fallback='👁')
-        self.empty_response = cfg.get('Responses', 'empty_response', fallback='👀')
         logging.debug('done initing')
 
     async def on_ready(self):
@@ -105,7 +112,7 @@ class Benjabot(discord.Client):
                 if await self._mod_commands(msg):
                     return
 
-            if self.silence.get(msg.guild.id, False):
+            if self._read_setting(msg.guild.id, 'silence'):
                 logger.debug('Ignoring message due to silence')
                 return
 
@@ -122,6 +129,7 @@ class Benjabot(discord.Client):
             if isinstance(msg.reference, discord.MessageReference):
                 msg = msg.reference.resolved
 
+            empty_response = self._read_setting(msg.guild.id, 'empty_response')
             if match is None:
                 # Look for any matching autoresponses to send
                 if not is_empty_message:
@@ -131,13 +139,14 @@ class Benjabot(discord.Client):
                             await msg.channel.send(response, reference=msg)
                             return
                 # Send the "empty message" response if the message doesn't have a URL.
-                if self.empty_response is not None:
-                    await msg.channel.send(self.empty_response)
+                if empty_response is not None and empty_response != '':
+                    await msg.channel.send(empty_response)
                 return
 
-            if self.viewed_emote is not None:
+            viewed_emote = self._read_setting(msg.guild.id, 'viewed_emote')
+            if viewed_emote is not None and viewed_emote != '':
                 # Add the "viewed" reaction to this message.
-                await msg.add_reaction(self.viewed_emote)
+                await msg.add_reaction(viewed_emote)
             url: str = match.group(0)
             logger.debug(f"Got URL: {url}")
             # TODO: Handle the case where the video is country/region blocked.
@@ -170,17 +179,59 @@ class Benjabot(discord.Client):
                 # Add the song and chart descriptors.
                 response: str = choice(responses.descriptors) + " " + \
                                 choice(responses.charts).format(charts[0], charts[1])
-                if randrange(self.bonus_chance_factor - 1) == 0:
+                if randrange(self._read_setting(msg.guild.id, 'bonus_chance_factor') - 1) == 0:
                     # Add the bonus sentence.
                     logger.debug("adding bonus response")
                     response += " " + choice(responses.extra).format(charts[2])
                 logger.debug(f"sending: \"{response}\"")
                 await msg.channel.send(response, reference=msg, mention_author=False)
 
+    def _read_setting(self, server_id: int, key: str):
+        """
+        Reads a per-server setting from the config file. If the setting does not
+        exist for the server, the default is returned.
+
+        :param server_id: The server ID for the setting
+        :param key: The name of the setting
+        :return: The current setting
+        :raises: KeyError if the setting does not exist
+        """
+        if key not in self.defaults.keys():
+            raise KeyError(f"{key} is not a valid setting.")
+        if isinstance(self.defaults[key], bool):
+            value = self.cfg.getboolean(f"server:{server_id}", key, fallback=self.defaults[key])
+        else:
+            value = self.cfg.get(f"server:{server_id}", key, fallback=self.defaults[key])
+        logger.debug(f"Read setting {key}={value} for server {server_id}")
+        return value
+
+    def _write_setting(self, server_id: int, key: str, value) -> None:
+        """
+        Writes a per-server setting to the config file. The server section and
+        setting key will be created as needed.
+
+        :param server_id: The server ID for the setting
+        :param key: The name of the setting
+        :param value: The new value to write
+        :return: None
+        :raises: KeyError if the setting does not exist
+        """
+        if key not in self.defaults.keys():
+            raise KeyError(f"{key} is not a valid setting.")
+        try:
+            self.cfg.set(f"server:{server_id}", key, str(value))
+        except configparser.NoSectionError:
+            self.cfg.add_section(f"server:{server_id}")
+            self.cfg.set(f"server:{server_id}", key, str(value))
+        logger.debug(f"Write setting {key}={value} for server {server_id}")
+        with open(self.cfg_path, 'w') as f:
+            self.cfg.write(f)
+
     async def _dev_response(self, msg: discord.Message) -> bool:
         """
         Determines whether the message should be responded to based on the dev
         mode configuration.
+
         :param msg: The message being processed
         :return: False if the message should not be processed; True otherwise.
         """
@@ -202,6 +253,7 @@ class Benjabot(discord.Client):
     async def _mod_commands(self, msg: discord.Message) -> bool:
         """
         Internal function for handling server mod/admin commands
+
         :param msg: The message we are operating on
         :return: True if the command was handled, otherwise False.
         """
@@ -218,7 +270,7 @@ class Benjabot(discord.Client):
         if 'status' in msg.content:
             # Return the status of the bot
             silenced: str = "not silenced."
-            if self.silence[msg.guild.id]:
+            if self._read_setting(msg.guild.id, 'silence'):
                 silenced = "silenced. (Except for right now)"
             await msg.channel.send(f"I am version {self.version}\n" +
                                    f"I am currently {silenced}")
@@ -226,14 +278,12 @@ class Benjabot(discord.Client):
 
         if 'silence' in msg.content:
             # Silence/unsilence the bot
-            if msg.guild.id not in self.silence:
-                self.silence[msg.guild.id] = False
-            self.silence[msg.guild.id] = not self.silence[msg.guild.id]
-            logger.debug(f"Silenced: {msg.guild.id} -> {self.silence}")
+            self._write_setting(msg.guild.id, 'silence', not bool(self._read_setting(msg.guild.id, 'silence')))
+            logger.debug(f"Silenced: {msg.guild.id} -> {self._read_setting(msg.guild.id, 'silence')}")
             really_silence = ''
             if msg.content.endswith('!'):
                 really_silence = ' No need to yell!'
-            if self.silence[msg.guild.id]:
+            if self._read_setting(msg.guild.id, 'silence'):
                 await msg.channel.send("_Fine_, I'll be quiet." + really_silence)
             else:
                 await msg.channel.send("Alright I'll speak again." + really_silence)

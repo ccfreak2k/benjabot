@@ -1,4 +1,4 @@
-[Responses]
+[Defaults]
 # The chance factor to affect how often the "extra" table is used, i.e. a 1 in x chance to apply it.
 # Defaults to 3
 # Type: int
