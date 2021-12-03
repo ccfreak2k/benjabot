@@ -3,6 +3,7 @@ import logging
 import os
 from random import seed, choice, randint, randrange
 import re
+import subprocess
 import sys
 
 import discord
@@ -43,12 +44,10 @@ fre = re.compile(r'[\W_]+')
 
 
 class Benjabot(discord.Client):
-    # Whether the bot has been silenced.
-    #silence = {}
     # Whether the bot has had on_ready() called at least once.
     readied: bool = False
     # The version of the bot.
-    version: str = "1.0.1"
+    version: str = "1.1.0"
     cfg = configparser.ConfigParser()
     # The path to the config file.
     cfg_path = 'config.ini'
@@ -74,6 +73,8 @@ class Benjabot(discord.Client):
             logger.warning('No dev user specified; ignore this if not using dev mode.')
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
+        # Append the git hash to the version string
+        self.version += f"+{subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()}"
         logging.debug('done initing')
 
     async def on_ready(self):
