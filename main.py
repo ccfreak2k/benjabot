@@ -74,7 +74,10 @@ class Benjabot(discord.Client):
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
         # Append the git hash to the version string
-        self.version += f"+{subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()}"
+        try:
+            self.version += f"+{subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()}"
+        except FileNotFoundError:
+            logger.debug('No git found')
         logging.debug('done initing')
 
     async def on_ready(self):
