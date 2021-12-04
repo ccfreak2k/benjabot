@@ -176,14 +176,16 @@ class Benjabot(discord.Client):
                 seed(title)
                 # Generate two random charts
                 chart_prefix = choice(['S', 'D'])
-                charts = [f"{chart_prefix}{randint(12, 28)}" for x in range(3)]
+                charts = [f"{chart_prefix}{randint(12, 28)}" for x in range(2)]
                 # Add the song and chart descriptors.
                 response: str = choice(responses.descriptors) + " " + \
                                 choice(responses.charts).format(charts[0], charts[1])
                 if randrange(self._read_setting(msg.guild.id, 'bonus_chance_factor') - 1) == 0:
                     # Add the bonus sentence.
                     logger.debug("adding bonus response")
-                    response += " " + choice(responses.extra).format(charts[2])
+                    # Generate an extra chart
+                    extra_chart = f"{choice(['S', 'D'])}{randint(12, 28)}"
+                    response += " " + choice(responses.extra).format(extra_chart)
                 logger.debug(f"sending: \"{response}\"")
                 await msg.channel.send(response, reference=msg, mention_author=False)
 

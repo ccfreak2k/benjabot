@@ -70,5 +70,5 @@ extra = [
 # Key should be the regex to match, value should be the response.
 autoresponses = {
     r'gu*n.?r[o0]+[ckx]+': 'STOP PLAYING GUN ROCK!',
-    r'stage\s*br(eak|ake)': '_HEY!!_'
+    r'stage\s*br(eak|[ao]ke)': '_HEY!!_'
 }
