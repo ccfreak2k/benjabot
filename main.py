@@ -7,10 +7,11 @@ import subprocess
 import sys
 
 import discord
-import youtube_dl.utils
-from youtube_dl import YoutubeDL
+import yt_dlp.utils
+from yt_dlp import YoutubeDL
 
 import responses
+
 
 class Logger(object):
     """
@@ -41,6 +42,8 @@ mre = re.compile(r'<@[!&]\d+>')
 tre = re.compile(r'\[[^]]*]|\([^)]*\)|{[^}]*}')
 # Regex to strip non-alphanumeric characters from titles.
 fre = re.compile(r'[\W_]+')
+# Regex to remove difficulty from titles (e.g. S8, D23).
+dre = re.compile(r'[sd]\d{1,2}')
 
 
 class Benjabot(discord.Client):
@@ -62,17 +65,17 @@ class Benjabot(discord.Client):
     def __init__(self, **options):
         logging.debug('Benjabot initing...')
         # Set up the defaults
-        super().__init__(**options)
+        super().__init__(intents=discord.Intents.default(), **options)
         self.cfg.read(self.cfg_path)
         # TODO: Handle missing config file case.
         self.dev_server = self.cfg.getint('Dev', 'dev_server', fallback=None)
-        if not self.dev_server:
-            logger.warning('No dev server specified; ignore this if not using dev mode.')
-        self.dev_user = self.cfg.getint('Dev', 'dev_user', fallback=None)
-        if not self.dev_user:
-            logger.warning('No dev user specified; ignore this if not using dev mode.')
         # The actual dev mode is retrieved from the env var.
         self.dev_mode = os.getenv('DEVMODE')
+        if not self.dev_server and self.dev_mode:
+            logger.warning('No dev server specified')
+        self.dev_user = self.cfg.getint('Dev', 'dev_user', fallback=None)
+        if not self.dev_user and self.dev_mode:
+            logger.warning('No dev user specified')
         # Append the git hash to the version string
         try:
             self.version += f"+{subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()}"
@@ -158,7 +161,7 @@ class Benjabot(discord.Client):
             async with msg.channel.typing():
                 try:
                     info = ydl.extract_info(match.group(0), download=False)
-                except youtube_dl.utils.DownloadError as e:
+                except yt_dlp.utils.DownloadError as e:
                     emsg: str = re.search('ERROR: ([^\\n]+)', e.args[0]).group(1)
                     logger.warning(f"Got error: {emsg}")
                     if re.search("Unsupported URL", e.args[0], re.IGNORECASE):
@@ -166,14 +169,14 @@ class Benjabot(discord.Client):
                     elif re.search("Incomplete YouTube ID", e.args[0], re.IGNORECASE) is not None:
                         await msg.channel.send("I can't see this video...did you copy the whole URL?", reference=msg, mention_author=False)
                     else:
-                        await msg.channel.send(f"I can't see this video...it says \"{emsg}\"", reference=msg, mention_author=False)
+                        await msg.channel.send(f"I can't see this video...it says \"{emsg}\"", reference=msg, mention_author=False, suppress_embeds=True)
                     return
 
                 if info is None:
                     await msg.channel.send("This doesn't look like a video...", reference=msg, mention_author=False)
                     return
                 # Strip out anything in brackets, then strip all non-alphanumeric and lowercase it
-                title: str = fre.sub('', tre.sub('', info['title'].lower()))
+                title: str = fre.sub('', dre.sub('', tre.sub('', info['title'].lower())))
                 logger.debug(f"generating response for: {title}")
                 # Seed the RNG and start generating the response
                 seed(title)

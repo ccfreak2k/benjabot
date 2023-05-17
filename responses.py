@@ -31,6 +31,8 @@ charts = [
     'The {0} is not fun.',
     'The {0} is pretty challenging.',
     'The {0} should be a {1}.',
+    'The only reason the {0} is not a {1} is because it\'s too slow.',
+    'The only reason the {0} is not a {1} is because it\'s too fast.',
     'The {0} is actually harder than the {1}.',
     'The {0} is actually easier than the {1}.'
 ]
